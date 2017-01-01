@@ -1,23 +1,25 @@
 import os
+import json
 import random
+import requests
 import datetime as dt
 import urllib
 import urlparse
 
 from secrets import *
 
-from giantbomb import giantbomb
 import tweepy
 
 useragent = "Test"
 
 # Maximum number of images to download
 max_images = 4
+max_games = 57500
 
 
 def format_release_date(game):
     """ Formats the game's release date nicely. """
-    d = game.original_release_date
+    d = game["original_release_date"]
     r = dt.datetime.strptime(d, "%Y-%m-%d 00:00:00")
     return dt.datetime.strftime(r, "%d %b %Y")
 
@@ -26,7 +28,7 @@ def get_platforms(game):
     """ Constructs a string containing the applicable platforms. """
     platforms = []
 
-    for p in game.platforms:
+    for p in game["platforms"]:
         platforms.append(p["abbreviation"])
 
     return platforms
@@ -34,10 +36,10 @@ def get_platforms(game):
 
 def get_credits(game):
     """ Constructs a string containing the developer/publisher names. """
-    developer = game.developers[0]["name"]
-    publisher = game.publishers[0]["name"]
+    developer = game["developers"][0]["name"]
+    publisher = game["publishers"][0]["name"]
 
-    credit = " by " + game.developers[0]["name"]
+    credit = " by " + developer
 
     if developer != publisher:
         credit += "/" + publisher
@@ -46,7 +48,8 @@ def get_credits(game):
 
 
 def save_images(game):
-    base_path = "./cache/{}/".format(game.id)
+    """ Iterates the game's images and downloads a number of them """
+    base_path = "./cache/{}/".format(game["id"])
     image_paths = []
 
     download_count = 0
@@ -54,12 +57,12 @@ def save_images(game):
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    for i in xrange(len(game.images)):
+    for i in xrange(len(game["images"])):
         if download_count >= max_images:
             break
 
         try:
-            image = game.images[i]
+            image = game["images"][i]
 
             url = image["super_url"]
 
@@ -78,12 +81,23 @@ def save_images(game):
 
 
 def get_game():
-    # Init GiantBomb API with our key/useragent string
-    gb = giantbomb.Api(gb_api_key, useragent)
-
+    """ Gets a random game from the GiantBomb API """
     # TODO: Find a way to get the number of games in API
     # Get a random game
-    game = gb.getGame(random.randint(1, 57500))
+    gameId = str(random.randint(1, max_games))
+    gameUrl = "http://www.giantbomb.com/api/game/{}?api_key={}&format=json"
+    gameUrl = gameUrl.format(gameId, gb_api_key)
+
+    headers = requests.utils.default_headers()
+    headers.update({
+        "User-Agent": useragent
+    })
+
+    res = requests.get(gameUrl, headers=headers)
+    game = json.loads(res.text)["results"]
+
+    if game["number_of_user_reviews"] > 2 or "reviews" in game:
+        raise Exception("Too mainstream!")
 
     return game
 
@@ -93,7 +107,7 @@ def create_tweet(game):
     platforms = get_platforms(game)
 
     # Dictionary for string formatting the tweet
-    t = {"name": game.name,
+    t = {"name": game["name"],
          "release": format_release_date(game),
          "platforms": "/".join(platforms)}
 
@@ -126,7 +140,8 @@ if __name__ == '__main__':
         try:
             game = get_game()
             tweet = create_tweet(game)
+            print(tweet)
             post_tweet(tweet, save_images(game))
             break
-        except x:
+        except Exception as x:
             print("Error: " + x.message + ", retrying")
