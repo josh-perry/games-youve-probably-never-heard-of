@@ -103,6 +103,7 @@ def get_game():
 
 
 def create_tweet(game):
+    """ Creates a suitable string to be used as the tweet status """
     # Get string for all platforms the game was released on
     platforms = get_platforms(game)
 
@@ -121,6 +122,10 @@ def create_tweet(game):
 
 
 def post_tweet(tweet, images):
+    """ Sends the tweet to twitter.
+        Uploads the file in the images list and sets the media IDs
+        appropriately.
+    """
     # Set up Twitter stuff
     twitter_auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     twitter_auth.set_access_token(access_key, access_secret)
@@ -140,7 +145,6 @@ if __name__ == '__main__':
         try:
             game = get_game()
             tweet = create_tweet(game)
-            print(tweet)
             post_tweet(tweet, save_images(game))
             break
         except Exception as x:
