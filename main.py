@@ -6,7 +6,12 @@ import datetime as dt
 import urllib
 import urlparse
 
-from secrets import *
+try:
+    from secrets import *
+except ImportError as ex:
+    print("Create a secrets file!")
+    import sys
+    sys.exit(1)
 
 import tweepy
 
