@@ -19,7 +19,6 @@ useragent = "Test"
 
 # Maximum number of images to download
 max_images = 4
-max_games = 57500
 
 
 def format_release_date(game):
@@ -27,6 +26,22 @@ def format_release_date(game):
     d = game["original_release_date"]
     r = dt.datetime.strptime(d, "%Y-%m-%d 00:00:00")
     return dt.datetime.strftime(r, "%d %b %Y")
+
+
+def get_max_id():
+    """ Finds the highest game ID for the random number generator. """
+    grabURL = "https://www.giantbomb.com/api/games/?api_key={}&field_list=id&sort=id:desc&limit=1&format=json"
+    grabURL = grabURL.format(gb_api_key)
+
+    headers = requests.utils.default_headers()
+    headers.update({
+        "User-Agent": useragent
+    })
+
+    res = requests.get(grabURL, headers=headers)
+    maxID = json.loads(res.text)["results"][0]["id"]
+
+    return maxID
 
 
 def get_platforms(game):
@@ -87,8 +102,8 @@ def save_images(game):
 
 def get_game():
     """ Gets a random game from the GiantBomb API """
-    # TODO: Find a way to get the number of games in API
     # Get a random game
+    max_games = get_max_id()
     gameId = str(random.randint(1, max_games))
     gameUrl = "http://www.giantbomb.com/api/game/{}?api_key={}&format=json"
     gameUrl = gameUrl.format(gameId, gb_api_key)
